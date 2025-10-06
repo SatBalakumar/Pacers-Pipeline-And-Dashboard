@@ -78,3 +78,7 @@ outputs/*.pdf
 
 # Logs
 *.log
+
+# Streamlit cache
+dashboard/.streamlit/secrets.toml
+dashboard/__pycache__/

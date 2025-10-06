@@ -1,218 +1,366 @@
-# Pacers Analytics Dashboard 🏀
+#  Pacers Analytics Pipeline & Dashboard
 
-A comprehensive Bronze→Silver→Gold ETL pipeline for NBA Indiana Pacers analytics, built with Python, pandas, and SQLite.
+A comprehensive Bronze→Silver→Gold ETL pipeline and interactive analytics dashboard for NBA Indiana Pacers data, built with Python, pandas, SQLite, and Streamlit.
 
-## Architecture
+##  Features
+
+ **Complete ETL Pipeline** - Bronze→Silver→Gold medallion architecture  
+ **Interactive Dashboard** - Streamlit analytics with Pacers themin## 📋 Data Requirements
+
+### **Expected Data Structure:**
+```
+data/raw/
+├── players/
+│   └── 2024_NBA_Players.parquet      # Player information & demographics
+├── schedule/
+│   └── 2024_NBA_Schedule.parquet     # Game schedule & results
+├── Boxscores/                         # Individual game statistics
+│   ├── 2025_0042400101_NBA_Traditional_boxscores.parquet
+│   ├── 2025_0042400102_NBA_Traditional_boxscores.parquet
+│   └── *.parquet                     # Additional boxscore files
+└── PBP/                              # Play-by-play data (optional)
+    ├── 2024_0042400101_NBA_PBP.parquet
+    └── *.parquet                     # Additional PBP files
+```
+
+### **📊 Exploratory Data Analysis**
+The `notebooks/` folder contains comprehensive EDA for each data source:
+- **`pacers_eda.ipynb`** - Pacers-specific analysis and insights
+- **`schedule_deep_eda_cleaning.ipynb`** - Game schedule data exploration
+- **`players_deep_eda_cleaning.ipynb`** - Player demographics analysis
+- **`boxscore_deep_eda_cleaning.ipynb`** - Game statistics exploration
+- **`PBP_deep_eda_cleaning.ipynb`** - Play-by-play data analysis
+
+### **📚 Documentation**
+The `docs/` folder contains technical documentation:
+- **`ERD.md`** - Complete Entity Relationship Diagram
+- **`data_quality_validation.md`** - Data quality standards
+- **`database_schema.dbml`** - Database schema definition
+- **`erdDiagram.png`** - Visual database diagram
+
+**⚠️ Data Not Included:** Raw NBA data files are not included due to size and licensing considerations. You'll need to obtain NBA data separately and place it in the correct directory structure.Validation** - Schema compliance and integrity checks  
+ **Comprehensive Logging** - Timestamped logs for all ETL operations  
+ **Pacers-Focused Analytics** - Team-specific views and insights  
+ **Make Automation** - Simple commands for entire workflow  
+
+##  Architecture
 
 This project implements a medallion data architecture:
 
-- **Bronze Layer**: Raw NBA data (parquet files)
-- **Silver Layer**: Cleaned, validated data with proper schemas
-- **Gold Layer**: Business-ready analytical tables and aggregations
+- ** Bronze Layer**: Raw NBA data (parquet files)
+- ** Silver Layer**: Cleaned, validated data with proper schemas  
+- ** Gold Layer**: Business-ready analytical tables and Pacers-focused views
+- ** Dashboard**: Interactive Streamlit application with official Pacers styling
 
 ## Quick Start
 
-### Environment Setup
-```bash
-# Create conda environment from file
-conda env create -f environment.yml
+### **Prerequisites**
+- Conda or Miniconda installed
+- Git for cloning repository
+- Raw NBA data files (not included)
 
-# Activate environment
+### **1. Setup Environment**
+```bash
+# Clone repository
+git clone https://github.com/SatBalakumar/Pacers-Pipeline-And-Dashboard.git
+cd Pacers-Pipeline-And-Dashboard
+
+# Create and activate conda environment
+conda env create -f environment.yml
 conda activate pacers_de
 
 # Verify installation
 python --version  # Should be 3.10.15
 ```
 
-### Run Pipeline
+### **2. Complete Workflow (4 Commands)**
 ```bash
-# Build complete ETL pipeline
+# Clean any existing files
+make clean
+
+# Setup project structure  
+make setup
+
+# Build complete ETL pipeline (Bronze→Silver→Gold)
 make build-all
 
-# Query Pacers data
-make pacers-stats
-make pacers-games
-make pacers-players
+# Launch interactive dashboard
+make dashboard
 ```
 
-## Features
+**Dashboard will open at:** `http://localhost:8501`
 
-✅ **Bronze → Silver → Gold ETL Pipeline**
-- Automated data transformation and validation
-- Comprehensive schema definitions with nullable pandas dtypes
-- Primary key and foreign key integrity constraints
-- ISO-8601 duration parsing and data normalization
+---
 
-✅ **Data Validation Framework**
-- Schema compliance validation
-- Primary key uniqueness checks
-- Foreign key referential integrity
-- Comprehensive error handling and logging
+## Complete Workflow Guide
 
-✅ **SQLite Integration**
-- Automatic table creation with proper DDL
-- Gold analytical views (Pacers-focused)
-- Database integrity validation
-- Backup and maintenance utilities
+### **🧹 Step 1: Clean Environment**
+Remove all generated files and start fresh:
+```bash
+make clean
+```
+*Removes Silver/Gold parquet files, SQLite database, logs, and Python cache*
 
-✅ **Pacers-Specific Analytics**
-- Player season averages and performance metrics
-- Game results with opponent analysis
-- Position-based statistical breakdowns
-- Draft pick and country origin analysis
+### **🏗️ Step 2: Setup Project Structure**  
+Create necessary directories:
+```bash
+make setup
+```
+*Creates `data/`, `db/`, `logs/` directories with proper structure*
 
-## Project Structure
+### ** Step 3: Verify Your Data**
+Check that you have required Bronze data:
+```bash
+make check-data
+```
+*Expected: Schedule, Players, and Boxscore data files in `data/raw/`*
+
+### **⚡ Step 4: Build ETL Pipeline**
+
+**Option A: Complete Build (Recommended)**
+```bash
+make build-all
+```
+
+**Option B: Step-by-Step**
+```bash
+make build-silver  # Bronze → Silver
+make build-gold    # Silver → Gold
+```
+
+**Option C: Enhanced Logging Pipeline**
+```bash
+python scripts/run_etl_pipeline.py
+```
+*All console output saved to `logs/etl_pipeline_YYYYMMDD_HHMMSS.log`*
+
+### ** Step 5: Validate Build**
+Check data integrity:
+```bash
+make validate  # Data integrity checks
+make info      # Database summary
+make sizes     # File sizes
+```
+
+### ** Step 6: Test Pacers Data**
+Quick validation of Pacers-specific data:
+```bash
+make pacers-games    # Recent games
+make pacers-players  # Current roster  
+make pacers-stats    # Season averages
+```
+
+### ** Step 7: Launch Dashboard**
+```bash
+make dashboard
+```
+*Automatically checks database, activates environment, launches Streamlit*
+
+---
+
+## Dashboard Features
+
+### **Home Tab**
+- Project overview and statistics
+- Database summary with row counts
+- Recent Pacers performance metrics
+
+### **Game Summary Tab** 
+- Detailed game analysis with team comparisons
+- Play-by-play data with filtering
+- Game result trends and insights
+
+### **Boxscore Browser Tab**
+- Player statistics with highlighting for stat leaders
+- Team filtering and game selection
+- Performance metrics visualization
+
+### **Player Lookup Tab**
+- Individual player analysis and biography
+- Recent game performance (last 10 games)
+- Season averages and career statistics
+- Recent play-by-play actions
+
+** Official Indiana Pacers Theme:**
+- Blue (RGB 0,45,98), Yellow (RGB 253,187,48), Silver (RGB 190,192,194)
+- Sticky navigation tabs
+- Clean, professional typography
+
+---
+
+## Make Commands Reference
+
+### **Core Pipeline**
+```bash
+make build-silver    # Build Silver tables from Bronze data
+make build-gold      # Build Gold tables from Silver data  
+make build-all       # Build complete pipeline
+make validate        # Validate data integrity
+make test           # Run ETL validation tests
+```
+
+### **Dashboard**
+```bash
+make dashboard      # Launch Streamlit dashboard
+make dash-setup     # Install dashboard dependencies
+```
+
+### **Data Exploration**
+```bash
+make pacers-games   # Recent Pacers games with results
+make pacers-players # Current Pacers roster
+make pacers-stats   # Top Pacers season averages
+make info          # Database summary and table counts
+```
+
+### **Utilities**
+```bash
+make clean         # Clean all generated files
+make setup         # Create project directories
+make backup        # Backup SQLite database
+make check-data    # Verify Bronze data exists
+make sizes         # Show file sizes
+make debug         # Debug information
+```
+
+### **Development Workflows**
+```bash
+make dev-build     # Full build with tests and validation
+make prod-build    # Production build with validation
+make quick-build   # Quick rebuild (skip tests)
+```
+
+---
+
+## 📁 Project Structure
 
 ```
-├── data/
-│   ├── raw/                    # Bronze layer (NBA source data)
+├── 📂 data/
+│   ├── 🥉 raw/                     # Bronze: Raw NBA data
 │   │   ├── players/
 │   │   │   └── 2024_NBA_Players.parquet
 │   │   ├── schedule/
 │   │   │   └── 2024_NBA_Schedule.parquet
-│   │   └── Boxscores/*.parquet
-│   ├── silver/                 # Cleaned, validated tables
-│   └── gold/                   # Analytical tables
-├── src/etl/
-│   ├── schemas.py              # Table schemas and DDL
-│   ├── utils.py                # ETL utilities and validation
-│   ├── seed_codes.py           # Lookup table builders
-│   ├── bronze_to_silver.py     # Bronze→Silver transformations
-│   ├── silver_to_gold.py       # Silver→Gold transformations
-│   └── sqlite_sink.py          # Database operations
-├── scripts/
-│   ├── build_silver.py         # Silver ETL pipeline
-│   └── build_gold.py           # Gold ETL pipeline
-├── tests/
-│   ├── test_schemas.py         # Schema validation tests
-│   └── test_validations.py     # ETL transformation tests
-├── db/
-│   └── pacers_analytics.db     # SQLite database
-└── Makefile                    # Build automation
+│   │   ├── Boxscores/              # Game boxscore files
+│   │   │   └── *.parquet
+│   │   └── PBP/                    # Play-by-play files (optional)
+│   │       └── *.parquet
+│   ├── 🥈 silver/                  # Silver: Cleaned tables  
+│   └── 🥇 gold/                    # Gold: Analytical tables
+├── 📂 src/etl/
+│   ├── schemas.py                  # Table schemas and DDL
+│   ├── utils.py                    # ETL utilities
+│   ├── bronze_to_silver.py         # Bronze→Silver transformations
+│   ├── silver_to_gold.py           # Silver→Gold transformations
+│   └── sqlite_sink.py              # Database operations
+├── 📂 scripts/
+│   ├── build_silver.py             # Silver ETL pipeline
+│   ├── build_gold.py               # Gold ETL pipeline
+│   ├── run_etl_pipeline.py         # Complete pipeline with logging
+│   └── show_database_info.py       # Database information
+├── 📂 dashboard/
+│   ├── app.py                      # Streamlit dashboard
+│   └── run_dashboard.sh            # Dashboard launcher
+├── 📂 notebooks/                   # EDA and Analysis
+│   ├── pacers_eda.ipynb            # Pacers-focused analysis
+│   ├── schedule_deep_eda_cleaning.ipynb  # Schedule data exploration
+│   ├── players_deep_eda_cleaning.ipynb   # Player data exploration
+│   ├── boxscore_deep_eda_cleaning.ipynb  # Boxscore data exploration
+│   └── PBP_deep_eda_cleaning.ipynb       # Play-by-play exploration
+├── 📂 docs/                        # Documentation
+│   ├── ERD.md                      # Entity Relationship Diagram
+│   ├── data_quality_validation.md  # Data quality documentation
+│   ├── database_schema.dbml        # Database schema definition
+│   └── erdDiagram.png              # Visual ERD diagram
+├── 📂 tests/
+│   ├── test_schemas.py             # Schema validation
+│   └── test_validations.py         # ETL validation
+├── 📂 logs/                        # ETL operation logs
+├── 📂 db/
+│   └── pacers_analytics.db         # SQLite database
+├── environment.yml                 # Conda environment definition
+└── Makefile                        # Build automation
 ```
+
+---
 
 ## Data Schema
 
-### Silver Tables (12 tables)
+### ** Silver Tables (12 tables)**
 - `venues_silver` - NBA arenas and venues
-- `teams_silver` - NBA teams information
-- `players_silver` - Player profiles with positions, draft info
+- `teams_silver` - NBA teams information  
+- `players_silver` - Player profiles with positions
 - `games_silver` - Game schedule and results
-- `playerboxscore_silver` - Individual player game statistics
+- `playerboxscore_silver` - Individual player statistics
 - `gameteamtotals_silver` - Team-level game statistics
-- Lookup tables: `gametypes_silver`, `positions_silver`, `countries_silver`, etc.
+- Lookup tables: `gametypes_silver`, `positions_silver`, `countries_silver`
 
-### Gold Tables (5+ tables)
+### ** Gold Tables (5 core tables)**
 - `gold_games` - Team-centric game view with opponent data
+- `gold_game_summary` - Game-centric summary view
 - `gold_player_info` - Enhanced player profiles with joins
 - `gold_player_boxscore` - Enriched player statistics
-- `gold_player_averages` - Season aggregations and averages
-- `gold_game_summary` - Game-centric summary view
+- `gold_player_averages` - Season aggregations
 
-### Gold Views (10+ views)
+### ** Gold Views (Pacers-Focused)**
 - `gold_pacers_games` - Pacers games only
 - `gold_pacers_players` - Current Pacers roster
 - `gold_pacers_season_averages` - Pacers player statistics
+- `gold_game_summary_with_status` - Games with status info
+- `gold_team_standings` - League standings
 - `gold_regular_season_games`, `gold_playoff_games` - Game type filters
-- `gold_team_standings` - League standings calculation
 
-## Make Commands
+---
 
-### Core Pipeline
-- `make build-silver` - Build Silver tables from Bronze data
-- `make build-gold` - Build Gold tables from Silver data  
-- `make build-all` - Build complete pipeline
-- `make validate` - Validate data integrity
-- `make test` - Run ETL validation tests
+## Logging System
 
-### Data Exploration
-- `make pacers-games` - Recent Pacers games
-- `make pacers-players` - Current Pacers roster
-- `make pacers-stats` - Top Pacers season averages
-- `make info` - Database summary and statistics
+All ETL operations are logged with timestamps:
 
-### Utilities
-- `make clean` - Clean generated files
-- `make backup` - Backup database
-- `make check-data` - Verify Bronze data exists
-- `make debug` - Show debug information
-
-## Technical Implementation
-
-### Data Types
-- **Nullable Pandas dtypes**: `Int8/16/32/64`, `boolean`, `string`, `float32/64`
-- **Proper NULL handling**: Distinguishes between 0 and NULL values
-- **Type safety**: Automated conversion with validation
-
-### Validation Framework
-```python
-# Primary key uniqueness
-ensure_pk_unique(df, 'player_id')
-
-# Foreign key integrity  
-ensure_fk(child_df, 'team_id', teams_df, 'team_id')
-
-# Schema compliance
-validate_schema_compliance(df, 'players_silver')
+### **Log Files Created:**
+```
+logs/
+├── build_silver_20251006_143022.log      # Silver layer build
+├── build_gold_20251006_143045.log        # Gold layer build
+├── etl_pipeline_20251006_143022.log      # Complete pipeline
+└── database_info_20251006_143100.log     # Database queries
 ```
 
-### Performance Features
-- **Efficient parquet storage** for Bronze and Silver layers
-- **SQLite indexing** on primary and foreign keys
-- **Incremental processing** support for large datasets
-- **Memory-efficient transformations** with pandas
-
-## Installation & Setup
-
-### Prerequisites
-- **Conda or Miniconda** installed on your system
-- **Git** for cloning the repository
-
-### Step-by-Step Setup
+### **View Logs:**
 ```bash
-# 1. Clone the repository
-git clone https://github.com/SatBalakumar/Pacers-Pipeline-And-Dashboard.git
-cd Pacers-Pipeline-And-Dashboard
+ls -la logs/                    # List all log files
+tail -f logs/etl_pipeline_*.log # Follow latest pipeline log
+```
 
-# 2. Create conda environment
-conda env create -f environment.yml
+**Dual Output:** All logs saved to files AND displayed in console
 
-# 3. Activate environment  
-conda activate pacers_de
+---
 
-# 4. Verify setup
-python --version  # Should output: Python 3.10.15
-make info         # Should show database structure
+## Troubleshooting
 
-# 5. Run the pipeline (if you have data)
+### **Database not found?**
+```bash
 make build-all
 ```
 
-### Alternative Setup (pip users)
+### **Environment issues?**
 ```bash
-# Create virtual environment
-python -m venv pacers_env
-source pacers_env/bin/activate  # On Windows: pacers_env\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Verify setup
-python --version  # Should be Python 3.10+
+make debug
 ```
 
-**Note**: The conda environment (`environment.yml`) is recommended as it includes all exact package versions used in development.
+### **Need fresh start?**
+```bash
+make clean && make setup && make build-all
+```
 
-## Dependencies
+### **Dashboard won't start?**
+```bash
+make dash-setup  # Install dependencies
+make dashboard   # Try again
+```
 
-- **Python 3.10+**
-- **pandas** (with nullable dtypes) 
-- **pyarrow** (parquet support)
-- **sqlite3** (database operations)
-- **pathlib** (file operations)
-- **Streamlit** (for dashboard - optional)
+---
 
-## Example Queries
+## Example Analytics Queries
 
 ```sql
 -- Top Pacers scorers this season
@@ -220,98 +368,89 @@ SELECT full_name, gp, ppg, rpg, apg
 FROM gold_pacers_season_averages 
 ORDER BY ppg DESC LIMIT 10;
 
--- Recent Pacers games with results
-SELECT game_datetime_est, team_abbreviation_opp, pts, 
-       CASE WHEN pts > (opponent points) THEN 'W' ELSE 'L' END as result
+-- Recent Pacers games with results  
+SELECT game_datetime_est, team_abbreviation_opp, pts,
+       CASE WHEN pts > opp_pts THEN 'W' ELSE 'L' END as result
 FROM gold_pacers_games 
 ORDER BY game_datetime_est DESC LIMIT 10;
 
--- Team standings (wins/losses)
-SELECT team_abbreviation_team, wins, losses, 
+-- Team standings
+SELECT team_abbreviation_team, wins, losses,
        ROUND(wins * 100.0 / (wins + losses), 1) as win_pct
 FROM gold_team_standings 
-WHERE season = '2024-25'
 ORDER BY win_pct DESC;
 ```
 
-## Development
+---
 
-```bash
-# Run tests with validation
-make dev-build
+## Technical Details
 
-# Quick rebuild without tests  
-make quick-build
+### **Data Types**
+- Nullable Pandas dtypes: `Int64`, `boolean`, `string`, `float64`
+- Proper NULL handling distinguishing 0 from NULL
+- Type safety with automated validation
 
-# Production build with full validation
-make prod-build
-```
+### **Performance Features**
+- Efficient parquet storage for Bronze/Silver layers
+- SQLite indexing on primary/foreign keys
+- Memory-efficient pandas transformations
+- Incremental processing support
 
-## Data Sources
+### **Dependencies**
+- Python 3.10+
+- pandas (with nullable dtypes)
+- pyarrow (parquet support)
+- sqlite3 (database operations)
+- streamlit (dashboard)
+- plotly (visualizations)
 
-This pipeline processes NBA data including:
-- **Player Information**: Demographics, physical stats, draft history
-- **Game Schedule**: Dates, venues, matchups, results
-- **Box Scores**: Individual and team game statistics
-- **Play-by-Play**: Detailed game events (optional)
+---
 
-### Expected Data Structure
+## 📋 Data Requirements
+
+### **Expected Data Structure:**
 ```
 data/raw/
 ├── players/
-│   └── 2024_NBA_Players.parquet
+│   └── 2024_NBA_Players.parquet      # Player information & demographics
 ├── schedule/
-│   └── 2024_NBA_Schedule.parquet
-├── Boxscores/
-│   └── *.parquet files
-└── PBP/
-    └── *.parquet files (optional)
+│   └── 2024_NBA_Schedule.parquet     # Game schedule & results
+├── Boxscores/                         # Individual game statistics
+│   ├── 2025_0042400101_NBA_Traditional_boxscores.parquet
+│   ├── 2025_0042400102_NBA_Traditional_boxscores.parquet
+│   └── *.parquet                     # Additional boxscore files
+└── PBP/                              # Play-by-play data (optional)
+    ├── 2024_0042400101_NBA_PBP.parquet
+    └── *.parquet                     # Additional PBP files
 ```
 
-**⚠️ Data Not Included**: Raw data files are not included in this repository due to size and licensing considerations. You'll need to obtain NBA data separately and place it in the appropriate folders before running the pipeline.
+### **📊 Exploratory Data Analysis**
+The `notebooks/` folder contains comprehensive EDA for each data source:
+- **`pacers_eda.ipynb`** - Pacers-specific analysis and insights
+- **`schedule_deep_eda_cleaning.ipynb`** - Game schedule data exploration
+- **`players_deep_eda_cleaning.ipynb`** - Player demographics analysis
+- **`boxscore_deep_eda_cleaning.ipynb`** - Game statistics exploration
+- **`PBP_deep_eda_cleaning.ipynb`** - Play-by-play data analysis
 
-Built for the Indiana Pacers analytics team with a focus on player development and game analysis.
+### **📚 Documentation**
+The `docs/` folder contains technical documentation:
+- **`ERD.md`** - Complete Entity Relationship Diagram
+- **`data_quality_validation.md`** - Data quality standards
+- **`database_schema.dbml`** - Database schema definition
+- **`erdDiagram.png`** - Visual database diagram
 
-### Run ETL Pipeline
-```bash
-make etl
-```
+**⚠️ Data Not Included:** Raw NBA data files are not included due to size and licensing considerations. You'll need to obtain NBA data separately and place it in the correct directory structure.
 
-### Available Make Commands
-```bash
-make setup          # Set up environment and dependencies
-make etl             # Run full ETL pipeline
-make clean           # Clean temporary files
-make test            # Run tests
-make docs            # Generate documentation
-```
-
-## Data Sources
-
-- **Players**: `data/raw/players/2024_NBA_Players.parquet`
-- **Schedule**: `data/raw/schedule/2024_NBA_Schedule.parquet`  
-- **Boxscores**: Individual game boxscore files in `data/raw/Boxscores/`
-- **Play-by-Play**: Detailed game event data in `data/raw/PBP/`
-
-## Architecture
-
-The pipeline follows a standard ETL pattern:
-1. **Extract**: Read parquet files from `data/raw/`
-2. **Transform**: Clean, validate, and process data
-3. **Load**: Store results in SQLite database and processed files
-
-## Analytics Focus
-
-Primary analysis areas:
-- Team performance metrics
-- Player statistics and trends
-- Game-by-game analysis
-- Advanced basketball analytics
+---
 
 ## Contributing
 
 1. Follow PEP-8 style guidelines
-2. Add docstrings to all functions
-3. Keep imports organized
-4. Never commit data files or databases
-5. Ensure .gitkeep files maintain folder structure
+2. Add docstrings to all functions  
+3. Never commit data files or databases
+4. Test changes with `make test`
+5. Update documentation for new features
+
+---
+
+Built with for Indiana Pacers analytics

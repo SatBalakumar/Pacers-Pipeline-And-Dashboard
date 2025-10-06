@@ -1,0 +1,1629 @@
+// Pacers Analytics Database Schema (DBML)
+// Generated from actual ETL pipeline build scripts
+// Last updated: October 6, 2025
+
+Project PacersAnalytics {
+  database_type: 'SQLite'
+  Note: '''
+    # Pacers Analytics Database
+    
+    This database contains NBA data with a focus on Indiana Pacers analytics.
+    
+    ## Architecture
+    - **Silver Layer**: Normalized source data tables (physical tables)
+    - **Gold Layer**: 5 physical analytical tables + 12 SQL views
+    
+    ## Data Flow
+    Raw Parquet → Silver Tables → Gold Tables → Gold Views → Dashboard
+  '''
+}
+
+// =============================================================================
+// SILVER LAYER - LOOKUP TABLES
+// =============================================================================
+
+Table venues_silver {
+  venue_id integer [primary key]
+  venue_name text
+  venue_state text  
+  venue_city text
+  
+  Note: "NBA arenas and venues"
+}
+
+Table teams_silver {
+  team_id integer [primary key]
+  team_slug text
+  team_city text
+  team_name text
+  team_abbreviation text
+  is_defunct integer
+  tricode text
+  
+  Note: "NBA teams including historical teams"
+}
+
+Table positions_silver {
+  position_id integer [primary key]
+  position_code text
+  
+  Note: "Basketball positions (PG, SG, SF, PF, C)"
+}
+
+Table countries_silver {
+  country_id integer [primary key]
+  country_name text
+  
+  Note: "Player birth countries"
+}
+
+Table draftpicks_silver {
+  draftpick_id integer [primary key]
+  player_id integer [ref: > players_silver.player_id]
+  draft_year integer
+  draft_round integer
+  draft_number integer
+  
+  Note: "NBA draft pick information"
+}
+
+Table gametypes_silver {
+  game_type_id integer [primary key]
+  game_type text
+  
+  Note: "Game types: Regular Season, Playoffs, Preseason"
+}
+
+Table affiliationtypes_silver {
+  affiliation_id integer [primary key]
+  affiliation_type text
+  
+  Note: "Player college/team affiliations"
+}
+
+Table dnp_reasons_silver {
+  dnp_reason_code integer [primary key]
+  dnp_reason_name text [not null]
+  
+  Note: "Did Not Play reasons (injury, rest, etc.)"
+}
+
+Table status_codes_silver {
+  status_code integer [primary key]
+  status_name text [not null]
+  
+  Note: "Game status codes (Final, In Progress, etc.)"
+}
+
+// =============================================================================
+// SILVER LAYER - CORE DATA TABLES
+// =============================================================================
+
+Table players_silver {
+  player_id integer [primary key]
+  first_name text
+  last_name text
+  player_slug text
+  is_active integer
+  team_id integer [ref: > teams_silver.team_id]
+  jersey_num integer
+  position_id integer [ref: > positions_silver.position_id]
+  height_inches integer
+  weight integer
+  birthdate text
+  age integer
+  country_id integer [ref: > countries_silver.country_id]
+  affiliation_id integer [ref: > affiliationtypes_silver.affiliation_id]
+  is_draft_pick integer
+  draftpick_id integer [ref: > draftpicks_silver.draftpick_id]
+  seasons_experience integer
+  career_start_season integer
+  career_last_season integer
+  is_two_way integer
+  is_ten_day integer
+  season integer
+  
+  Note: "NBA player information and attributes"
+}
+
+Table games_silver {
+  game_id integer [primary key]
+  season integer
+  game_datetime_est text
+  home_team_id integer [ref: > teams_silver.team_id]
+  away_team_id integer [ref: > teams_silver.team_id]
+  venue_id integer [ref: > venues_silver.venue_id]
+  home_points integer
+  away_points integer
+  game_type_id integer [ref: > gametypes_silver.game_type_id]
+  status_code integer [ref: > status_codes_silver.status_code]
+  
+  Note: "NBA game results and metadata"
+}
+
+Table gameteamtotals_silver {
+  game_id integer [ref: > games_silver.game_id]
+  team_id integer [ref: > teams_silver.team_id]
+  is_home integer
+  minutes_total real
+  pts integer
+  fgm integer
+  fga integer
+  fg3m integer
+  fg3a integer
+  ftm integer
+  fta integer
+  oreb integer
+  dreb integer
+  reb integer
+  ast integer
+  stl integer
+  blk integer
+  tov integer
+  pf integer
+  pitp integer
+  second_chance_pts integer
+  fastbreak_pts integer
+  pts_off_to integer
+  
+  indexes {
+    (game_id, team_id) [pk]
+  }
+  
+  Note: "Team-level statistics for each game"
+}
+
+Table playerboxscore_silver {
+  game_id integer [ref: > games_silver.game_id]
+  player_id integer [ref: > players_silver.player_id]
+  team_id integer [ref: > teams_silver.team_id]
+  starter_flag integer
+  played_flag integer
+  position_id integer [ref: > positions_silver.position_id]
+  minutes real
+  pts integer
+  fgm integer
+  fga integer
+  fg3m integer
+  fg3a integer
+  ftm integer
+  fta integer
+  oreb integer
+  dreb integer
+  reb integer
+  ast integer
+  stl integer
+  blk integer
+  tov integer
+  pf integer
+  plusminus integer
+  dnp_reason_code integer [ref: > dnp_reasons_silver.dnp_reason_code]
+  
+  indexes {
+    (game_id, player_id) [pk]
+  }
+  
+  Note: "Individual player statistics for each game"
+}
+
+Table pbp_silver {
+  game_id integer [ref: > games_silver.game_id]
+  event_num integer
+  period integer
+  pc_time text
+  wc_time text
+  event_msg_type integer
+  event_action_type integer
+  team_id integer [ref: > teams_silver.team_id]
+  player1_id integer [ref: > players_silver.player_id]
+  player2_id integer [ref: > players_silver.player_id]
+  player3_id integer [ref: > players_silver.player_id]
+  home_description text
+  visitor_description text
+  neutral_description text
+  home_score integer
+  away_score integer
+  score_margin integer
+  shot_value integer
+  shot_result text
+  shot_distance real
+  shot_x real
+  shot_y real
+  shot_side text
+  foul_type_code integer
+  turnover_type_code integer
+  is_substitution integer
+  is_timeout integer
+  
+  indexes {
+    (game_id, event_num) [pk]
+  }
+  
+  Note: "Play-by-play data for detailed game analysis"
+}
+
+// =============================================================================
+// GOLD LAYER - PHYSICAL ANALYTICAL TABLES (5 Core Tables)
+// =============================================================================
+
+Table gold_games {
+  // Team-centric view: 2 rows per game (one for each team)
+  game_id integer [ref: > games_silver.game_id]
+  season integer
+  game_datetime_est text
+  venue_id integer [ref: > venues_silver.venue_id]
+  game_type_id integer [ref: > gametypes_silver.game_type_id]
+  status_code integer [ref: > status_codes_silver.status_code]
+  
+  // Team context (focus team perspective)
+  team_id integer [ref: > teams_silver.team_id, note: "Focus team"]
+  team_name_team text [note: "Focus team name"]
+  team_city_team text [note: "Focus team city"] 
+  team_abbreviation_team text [note: "Focus team abbreviation"]
+  
+  // Opponent context
+  opp_team_id integer [ref: > teams_silver.team_id, note: "Opponent team"]
+  team_name_opp text [note: "Opponent team name"]
+  team_city_opp text [note: "Opponent team city"]
+  team_abbreviation_opp text [note: "Opponent team abbreviation"]
+  
+  // Game context
+  is_home integer [note: "1 if focus team is home, 0 if away"]
+  
+  // Team stats (from gameteamtotals_silver)
+  minutes_total real
+  pts integer [note: "Focus team points"]
+  fgm integer
+  fga integer
+  fg3m integer
+  fg3a integer
+  ftm integer
+  fta integer
+  oreb integer
+  dreb integer
+  reb integer
+  ast integer
+  stl integer
+  blk integer
+  tov integer
+  pf integer
+  pitp integer
+  second_chance_pts integer
+  fastbreak_pts integer
+  pts_off_to integer
+  
+  indexes {
+    (game_id, team_id) [pk]
+  }
+  
+  Note: "Team-centric games view with opponent context and stats"
+}
+
+Table gold_game_summary {
+  // Game-centric view: 1 row per game
+  game_id integer [primary key, ref: > games_silver.game_id]
+  season integer
+  game_datetime_est text
+  venue_id integer [ref: > venues_silver.venue_id]
+  game_type_id integer [ref: > gametypes_silver.game_type_id]
+  status_code integer [ref: > status_codes_silver.status_code]
+  
+  // Home team info
+  home_team_id integer [ref: > teams_silver.team_id]
+  home_team_name text
+  home_team_city text
+  home_team_abbreviation text
+  home_points integer
+  
+  // Away team info  
+  away_team_id integer [ref: > teams_silver.team_id]
+  away_team_name text
+  away_team_city text
+  away_team_abbreviation text
+  away_points integer
+  
+  // Calculated fields
+  point_differential integer [note: "home_points - away_points"]
+  total_points integer [note: "home_points + away_points"]
+  
+  Note: "Game-centric summary with home/away team details"
+}
+
+Table gold_player_info {
+  // Enhanced player information with joins
+  player_id integer [primary key, ref: > players_silver.player_id]
+  first_name text
+  last_name text
+  player_slug text
+  is_active integer
+  team_id integer [ref: > teams_silver.team_id]
+  jersey_num integer
+  position_id integer [ref: > positions_silver.position_id]
+  height_inches integer
+  weight integer
+  birthdate text
+  age integer
+  country_id integer [ref: > countries_silver.country_id]
+  affiliation_id integer [ref: > affiliationtypes_silver.affiliation_id]
+  is_draft_pick integer
+  draftpick_id integer [ref: > draftpicks_silver.draftpick_id]
+  seasons_experience integer
+  career_start_season integer
+  career_last_season integer
+  is_two_way integer
+  is_ten_day integer
+  season integer
+  
+  // Joined fields from related tables
+  team_name_team text [note: "From teams_silver"]
+  team_city_team text [note: "From teams_silver"]
+  team_abbreviation_team text [note: "From teams_silver"]
+  position_code text [note: "From positions_silver"]
+  country_name text [note: "From countries_silver"]
+  draft_year integer [note: "From draftpicks_silver"]
+  draft_round integer [note: "From draftpicks_silver"]
+  draft_number integer [note: "From draftpicks_silver"]
+  
+  // Calculated fields
+  full_name text [note: "first_name + last_name"]
+  
+  Note: "Complete player profiles with all related information"
+}
+
+Table gold_player_boxscore {
+  // Enhanced player boxscores with game and team context
+  game_id integer [ref: > games_silver.game_id]
+  player_id integer [ref: > players_silver.player_id]
+  team_id integer [ref: > teams_silver.team_id]
+  starter_flag integer
+  played_flag integer
+  position_id integer [ref: > positions_silver.position_id]
+  minutes real
+  pts integer
+  fgm integer
+  fga integer
+  fg3m integer
+  fg3a integer
+  ftm integer
+  fta integer
+  oreb integer
+  dreb integer
+  reb integer
+  ast integer
+  stl integer
+  blk integer
+  tov integer
+  pf integer
+  plusminus integer
+  dnp_reason_code integer [ref: > dnp_reasons_silver.dnp_reason_code]
+  
+  // Game context (from games_silver)
+  season integer
+  game_datetime_est text
+  home_team_id integer [ref: > teams_silver.team_id]
+  away_team_id integer [ref: > teams_silver.team_id]
+  
+  // Calculated game context
+  is_home integer [note: "1 if player's team was home"]
+  opp_team_id integer [ref: > teams_silver.team_id, note: "Opponent team ID"]
+  
+  // Team context (from teams_silver)
+  team_name_team text [note: "Player's team name"]
+  team_abbreviation_team text [note: "Player's team abbreviation"]
+  team_name_opp text [note: "Opponent team name"]
+  team_abbreviation_opp text [note: "Opponent team abbreviation"]
+  
+  // Position context
+  position_code text [note: "From positions_silver"]
+  
+  // Calculated shooting percentages
+  fg_pct real [note: "Field goal percentage (calculated)"]
+  fg3_pct real [note: "Three-point percentage (calculated)"]
+  ft_pct real [note: "Free throw percentage (calculated)"]
+  
+  indexes {
+    (game_id, player_id) [pk]
+  }
+  
+  Note: "Enhanced player boxscores with full game and team context"
+}
+
+Table gold_player_averages {
+  // Season aggregations for players
+  player_id integer [ref: > players_silver.player_id]
+  season integer
+  
+  // Aggregated stats
+  gp integer [note: "Games played (count)"]
+  mpg real [note: "Minutes per game (mean)"]
+  ppg real [note: "Points per game (mean)"]
+  rpg real [note: "Rebounds per game (mean)"]
+  apg real [note: "Assists per game (mean)"] 
+  spg real [note: "Steals per game (mean)"]
+  bpg real [note: "Blocks per game (mean)"]
+  tpg real [note: "Turnovers per game (mean)"]
+  
+  // Season totals for shooting calculations
+  fgm_total integer [note: "Total field goals made"]
+  fga_total integer [note: "Total field goals attempted"]
+  fg3m_total integer [note: "Total 3-pointers made"]
+  fg3a_total integer [note: "Total 3-pointers attempted"]
+  ftm_total integer [note: "Total free throws made"]
+  fta_total integer [note: "Total free throws attempted"]
+  
+  // Season shooting percentages
+  fg_pct real [note: "Season field goal percentage"]
+  three_pct real [note: "Season three-point percentage"]
+  ft_pct real [note: "Season free throw percentage"]
+  
+  indexes {
+    (player_id, season) [pk]
+  }
+  
+  Note: "Season-aggregated player statistics and shooting percentages"
+}
+
+// =============================================================================
+// GOLD LAYER - SQL VIEWS (12 Analytical Views)
+// =============================================================================
+
+Table gold_preseason_games {
+  // VIEW: SELECT * FROM gold_games WHERE game_type_id = 0
+  game_id integer [primary key, ref: > gold_games.game_id]
+  season integer
+  game_datetime_est text
+  venue_id integer [ref: > venues_silver.venue_id]
+  game_type_id integer [ref: > gametypes_silver.game_type_id]
+  status_code integer [ref: > status_codes_silver.status_code]
+  team_id integer [ref: > teams_silver.team_id]
+  team_name_team text
+  team_city_team text
+  team_abbreviation_team text
+  opp_team_id integer [ref: > teams_silver.team_id]
+  team_name_opp text
+  team_city_opp text
+  team_abbreviation_opp text
+  is_home integer
+  minutes_total real
+  pts integer
+  fgm integer
+  fga integer
+  fg3m integer
+  fg3a integer
+  ftm integer
+  fta integer
+  oreb integer
+  dreb integer
+  reb integer
+  ast integer
+  stl integer
+  blk integer
+  tov integer
+  pf integer
+  pitp integer
+  second_chance_pts integer
+  fastbreak_pts integer
+  pts_off_to integer
+  
+  Note: "VIEW: Preseason games only (game_type_id = 0)"
+}
+
+Table gold_regular_season_games {
+  // VIEW: SELECT * FROM gold_games WHERE game_type_id = 1
+  game_id integer [primary key, ref: > gold_games.game_id]
+  season integer
+  game_datetime_est text
+  venue_id integer [ref: > venues_silver.venue_id]
+  game_type_id integer [ref: > gametypes_silver.game_type_id]
+  status_code integer [ref: > status_codes_silver.status_code]
+  team_id integer [ref: > teams_silver.team_id]
+  team_name_team text
+  team_city_team text
+  team_abbreviation_team text
+  opp_team_id integer [ref: > teams_silver.team_id]
+  team_name_opp text
+  team_city_opp text
+  team_abbreviation_opp text
+  is_home integer
+  minutes_total real
+  pts integer
+  fgm integer
+  fga integer
+  fg3m integer
+  fg3a integer
+  ftm integer
+  fta integer
+  oreb integer
+  dreb integer
+  reb integer
+  ast integer
+  stl integer
+  blk integer
+  tov integer
+  pf integer
+  pitp integer
+  second_chance_pts integer
+  fastbreak_pts integer
+  pts_off_to integer
+  
+  Note: "VIEW: Regular season games only (game_type_id = 1)"
+}
+
+Table gold_playoff_games {
+  // VIEW: SELECT * FROM gold_games WHERE game_type_id = 3
+  game_id integer [primary key, ref: > gold_games.game_id]
+  season integer
+  game_datetime_est text
+  venue_id integer [ref: > venues_silver.venue_id]
+  game_type_id integer [ref: > gametypes_silver.game_type_id]
+  status_code integer [ref: > status_codes_silver.status_code]
+  team_id integer [ref: > teams_silver.team_id]
+  team_name_team text
+  team_city_team text
+  team_abbreviation_team text
+  opp_team_id integer [ref: > teams_silver.team_id]
+  team_name_opp text
+  team_city_opp text
+  team_abbreviation_opp text
+  is_home integer
+  minutes_total real
+  pts integer
+  fgm integer
+  fga integer
+  fg3m integer
+  fg3a integer
+  ftm integer
+  fta integer
+  oreb integer
+  dreb integer
+  reb integer
+  ast integer
+  stl integer
+  blk integer
+  tov integer
+  pf integer
+  pitp integer
+  second_chance_pts integer
+  fastbreak_pts integer
+  pts_off_to integer
+  
+  Note: "VIEW: Playoff games only (game_type_id = 3)"
+}
+
+Table gold_pacers_games {
+  // VIEW: SELECT * FROM gold_games WHERE team_abbreviation_team = 'IND'
+  game_id integer [primary key, ref: > gold_games.game_id]
+  season integer
+  game_datetime_est text
+  venue_id integer [ref: > venues_silver.venue_id]
+  game_type_id integer [ref: > gametypes_silver.game_type_id]
+  status_code integer [ref: > status_codes_silver.status_code]
+  team_id integer [ref: > teams_silver.team_id]
+  team_name_team text
+  team_city_team text
+  team_abbreviation_team text
+  opp_team_id integer [ref: > teams_silver.team_id]
+  team_name_opp text
+  team_city_opp text
+  team_abbreviation_opp text
+  is_home integer
+  minutes_total real
+  pts integer
+  fgm integer
+  fga integer
+  fg3m integer
+  fg3a integer
+  ftm integer
+  fta integer
+  oreb integer
+  dreb integer
+  reb integer
+  ast integer
+  stl integer
+  blk integer
+  tov integer
+  pf integer
+  pitp integer
+  second_chance_pts integer
+  fastbreak_pts integer
+  pts_off_to integer
+  
+  Note: "VIEW: All Pacers games (team_abbreviation_team = 'IND')"
+}
+
+Table gold_pacers_home_games {
+  // VIEW: SELECT * FROM gold_games WHERE team_abbreviation_team = 'IND' AND is_home = 1
+  game_id integer [primary key, ref: > gold_games.game_id]
+  season integer
+  game_datetime_est text
+  venue_id integer [ref: > venues_silver.venue_id]
+  game_type_id integer [ref: > gametypes_silver.game_type_id]
+  status_code integer [ref: > status_codes_silver.status_code]
+  team_id integer [ref: > teams_silver.team_id]
+  team_name_team text
+  team_city_team text
+  team_abbreviation_team text
+  opp_team_id integer [ref: > teams_silver.team_id]
+  team_name_opp text
+  team_city_opp text
+  team_abbreviation_opp text
+  is_home integer
+  minutes_total real
+  pts integer
+  fgm integer
+  fga integer
+  fg3m integer
+  fg3a integer
+  ftm integer
+  fta integer
+  oreb integer
+  dreb integer
+  reb integer
+  ast integer
+  stl integer
+  blk integer
+  tov integer
+  pf integer
+  pitp integer
+  second_chance_pts integer
+  fastbreak_pts integer
+  pts_off_to integer
+  
+  Note: "VIEW: Pacers home games only (is_home = 1)"
+}
+
+Table gold_pacers_away_games {
+  // VIEW: SELECT * FROM gold_games WHERE team_abbreviation_team = 'IND' AND is_home = 0
+  game_id integer [primary key, ref: > gold_games.game_id]
+  season integer
+  game_datetime_est text
+  venue_id integer [ref: > venues_silver.venue_id]
+  game_type_id integer [ref: > gametypes_silver.game_type_id]
+  status_code integer [ref: > status_codes_silver.status_code]
+  team_id integer [ref: > teams_silver.team_id]
+  team_name_team text
+  team_city_team text
+  team_abbreviation_team text
+  opp_team_id integer [ref: > teams_silver.team_id]
+  team_name_opp text
+  team_city_opp text
+  team_abbreviation_opp text
+  is_home integer
+  minutes_total real
+  pts integer
+  fgm integer
+  fga integer
+  fg3m integer
+  fg3a integer
+  ftm integer
+  fta integer
+  oreb integer
+  dreb integer
+  reb integer
+  ast integer
+  stl integer
+  blk integer
+  tov integer
+  pf integer
+  pitp integer
+  second_chance_pts integer
+  fastbreak_pts integer
+  pts_off_to integer
+  
+  Note: "VIEW: Pacers away games only (is_home = 0)"
+}
+
+Table gold_pacers_players {
+  // VIEW: SELECT * FROM gold_player_info WHERE team_abbreviation_team = 'IND'
+  player_id integer [primary key, ref: > gold_player_info.player_id]
+  first_name text
+  last_name text
+  player_slug text
+  is_active integer
+  team_id integer [ref: > teams_silver.team_id]
+  jersey_num integer
+  position_id integer [ref: > positions_silver.position_id]
+  height_inches integer
+  weight integer
+  birthdate text
+  age integer
+  country_id integer [ref: > countries_silver.country_id]
+  affiliation_id integer [ref: > affiliationtypes_silver.affiliation_id]
+  is_draft_pick integer
+  draftpick_id integer [ref: > draftpicks_silver.draftpick_id]
+  seasons_experience integer
+  career_start_season integer
+  career_last_season integer
+  is_two_way integer
+  is_ten_day integer
+  season integer
+  team_name_team text
+  team_city_team text
+  team_abbreviation_team text
+  position_code text
+  country_name text
+  draft_year integer
+  draft_round integer
+  draft_number integer
+  full_name text
+  
+  Note: "VIEW: Current Pacers players (team_abbreviation_team = 'IND')"
+}
+
+Table gold_pacers_player_stats {
+  // VIEW: SELECT * FROM gold_player_boxscore WHERE team_abbreviation_team = 'IND'
+  game_id integer [ref: > games_silver.game_id]
+  player_id integer [ref: > players_silver.player_id]
+  team_id integer [ref: > teams_silver.team_id]
+  starter_flag integer
+  played_flag integer
+  position_id integer [ref: > positions_silver.position_id]
+  minutes real
+  pts integer
+  fgm integer
+  fga integer
+  fg3m integer
+  fg3a integer
+  ftm integer
+  fta integer
+  oreb integer
+  dreb integer
+  reb integer
+  ast integer
+  stl integer
+  blk integer
+  tov integer
+  pf integer
+  plusminus integer
+  dnp_reason_code integer [ref: > dnp_reasons_silver.dnp_reason_code]
+  season integer
+  game_datetime_est text
+  home_team_id integer [ref: > teams_silver.team_id]
+  away_team_id integer [ref: > teams_silver.team_id]
+  is_home integer
+  opp_team_id integer [ref: > teams_silver.team_id]
+  team_name_team text
+  team_abbreviation_team text
+  team_name_opp text
+  team_abbreviation_opp text
+  position_code text
+  fg_pct real
+  fg3_pct real
+  ft_pct real
+  
+  indexes {
+    (game_id, player_id) [pk]
+  }
+  
+  Note: "VIEW: Pacers player boxscore stats (team_abbreviation_team = 'IND')"
+}
+
+Table gold_pacers_season_averages {
+  // VIEW: JOIN gold_player_averages + gold_player_info WHERE team_abbreviation_team = 'IND'
+  player_id integer [ref: > players_silver.player_id]
+  season integer
+  gp integer
+  mpg real
+  ppg real
+  rpg real
+  apg real
+  spg real
+  bpg real
+  tpg real
+  fgm_total integer
+  fga_total integer
+  fg3m_total integer
+  fg3a_total integer
+  ftm_total integer
+  fta_total integer
+  fg_pct real
+  three_pct real
+  ft_pct real
+  first_name text
+  last_name text
+  full_name text
+  position_code text
+  
+  indexes {
+    (player_id, season) [pk]
+  }
+  
+  Note: "VIEW: Pacers player season averages with names and positions"
+}
+
+Table gold_games_with_status {
+  // VIEW: gold_games LEFT JOIN status_codes_silver
+  game_id integer [primary key, ref: > gold_games.game_id]
+  season integer
+  game_datetime_est text
+  venue_id integer [ref: > venues_silver.venue_id]
+  game_type_id integer [ref: > gametypes_silver.game_type_id]
+  status_code integer [ref: > status_codes_silver.status_code]
+  team_id integer [ref: > teams_silver.team_id]
+  team_name_team text
+  team_city_team text
+  team_abbreviation_team text
+  opp_team_id integer [ref: > teams_silver.team_id]
+  team_name_opp text
+  team_city_opp text
+  team_abbreviation_opp text
+  is_home integer
+  minutes_total real
+  pts integer
+  fgm integer
+  fga integer
+  fg3m integer
+  fg3a integer
+  ftm integer
+  fta integer
+  oreb integer
+  dreb integer
+  reb integer
+  ast integer
+  stl integer
+  blk integer
+  tov integer
+  pf integer
+  pitp integer
+  second_chance_pts integer
+  fastbreak_pts integer
+  pts_off_to integer
+  status_name text [note: "From status_codes_silver"]
+  
+  Note: "VIEW: Games with human-readable status names"
+}
+
+Table gold_game_summary_with_status {
+  // VIEW: gold_game_summary LEFT JOIN status_codes_silver
+  game_id integer [primary key, ref: > gold_game_summary.game_id]
+  season integer
+  game_datetime_est text
+  venue_id integer [ref: > venues_silver.venue_id]
+  game_type_id integer [ref: > gametypes_silver.game_type_id]
+  status_code integer [ref: > status_codes_silver.status_code]
+  home_team_id integer [ref: > teams_silver.team_id]
+  home_team_name text
+  home_team_city text
+  home_team_abbreviation text
+  home_points integer
+  away_team_id integer [ref: > teams_silver.team_id]
+  away_team_name text
+  away_team_city text
+  away_team_abbreviation text
+  away_points integer
+  point_differential integer
+  total_points integer
+  status_name text [note: "From status_codes_silver"]
+  
+  Note: "VIEW: Game summaries with human-readable status names"
+}
+
+Table gold_team_standings {
+  // VIEW: Calculated team standings by season
+  team_id integer [primary key, ref: > teams_silver.team_id]
+  team_name_team text
+  team_abbreviation_team text
+  season integer
+  games_played integer [note: "COUNT of games"]
+  wins integer [note: "Calculated wins"]
+  losses integer [note: "Calculated losses"]
+  win_percentage real [note: "wins / games_played"]
+  points_for integer [note: "SUM of team points"]
+  points_against integer [note: "SUM of opponent points"]
+  point_differential integer [note: "points_for - points_against"]
+  
+  Note: "VIEW: Team standings calculations aggregated by season"
+}
+
+// =============================================================================
+// DASHBOARD USAGE NOTES
+// =============================================================================
+
+Note dashboard_queries {
+  '''
+  ## Key Dashboard Queries and Data Flow
+  
+  ### Game Summary Page
+  - **Primary Source**: gold_pacers_games (VIEW → gold_games)
+  - **Filters**: season, game_type via gametypes_silver JOIN
+  - **Win/Loss Logic**: Compare pts vs opponent team's pts for same game_id
+  
+  ### Boxscore Browser  
+  - **Primary Source**: gold_player_boxscore (PHYSICAL TABLE)
+  - **Player Context**: Includes team_name_team, position_code, shooting percentages
+  - **Game Context**: season, opponent info, home/away status
+  
+  ### Player Lookup
+  - **Primary Source**: gold_player_info (PHYSICAL TABLE)
+  - **Season Stats**: gold_player_averages (PHYSICAL TABLE)
+  - **Current Team**: Filtered by team_abbreviation_team = 'IND' for Pacers focus
+  
+  ### Home Page Recent Games
+  - **Primary Source**: gold_pacers_games (VIEW)
+  - **Ordering**: By game_datetime_est DESC
+  - **Status**: Via status_codes_silver for live game status
+  '''
+}
+
+Note data_architecture {
+  '''
+  ## Data Architecture Summary
+  
+  ### Silver Layer (12 Tables - All Physical)
+  - **9 Lookup Tables**: venues, teams, positions, countries, draftpicks, gametypes, affiliationtypes, dnp_reasons, status_codes
+  - **3 Core Data Tables**: players, games, gameteamtotals, playerboxscore, pbp
+  
+  ### Gold Layer (17 Tables - 5 Physical + 12 Views)
+  - **5 Physical Analytical Tables**: 
+    * gold_games (team-centric, 2 rows per game)
+    * gold_game_summary (game-centric, 1 row per game) 
+    * gold_player_info (enhanced player profiles)
+    * gold_player_boxscore (enhanced boxscores with context)
+    * gold_player_averages (season aggregations)
+  
+  - **12 SQL Views**: Team/game type filters + Pacers-specific views + status joins
+  
+  ### Key Relationships
+  - **1:N**: teams → players, games, gameteamtotals
+  - **1:N**: games → gameteamtotals, playerboxscore, pbp
+  - **N:1**: players → teams, positions, countries
+  - **Composite PKs**: (game_id, team_id), (game_id, player_id)
+  '''
+}
+
+// =============================================================================
+// SILVER LAYER - LOOKUP TABLES
+// =============================================================================
+
+Table venues_silver {
+  venue_id integer [primary key]
+  venue_name text
+  venue_state text  
+  venue_city text
+  
+  Note: "NBA arenas and venues"
+}
+
+Table teams_silver {
+  team_id integer [primary key]
+  team_slug text
+  team_city text
+  team_name text
+  team_abbreviation text
+  is_defunct integer
+  tricode text
+  
+  Note: "NBA teams including historical teams"
+}
+
+Table positions_silver {
+  position_id integer [primary key]
+  position_code text
+  
+  Note: "Basketball positions (PG, SG, SF, PF, C)"
+}
+
+Table countries_silver {
+  country_id integer [primary key]
+  country_name text
+  
+  Note: "Player birth countries"
+}
+
+Table draftpicks_silver {
+  draftpick_id integer [primary key]
+  player_id integer
+  draft_year integer
+  draft_round integer
+  draft_number integer
+  
+  Note: "NBA draft pick information"
+}
+
+Table gametypes_silver {
+  game_type_id integer [primary key]
+  game_type text
+  
+  Note: "Game types: Regular Season, Playoffs, Preseason"
+}
+
+Table affiliationtypes_silver {
+  affiliation_id integer [primary key]
+  affiliation_type text
+  
+  Note: "Player college/team affiliations"
+}
+
+Table dnp_reasons_silver {
+  dnp_reason_code integer [primary key]
+  dnp_reason_name text [not null]
+  
+  Note: "Did Not Play reasons (injury, rest, etc.)"
+}
+
+Table status_codes_silver {
+  status_code integer [primary key]
+  status_name text [not null]
+  
+  Note: "Game status codes (Final, In Progress, etc.)"
+}
+
+// =============================================================================
+// SILVER LAYER - CORE DATA TABLES
+// =============================================================================
+
+Table players_silver {
+  player_id integer [primary key]
+  first_name text
+  last_name text
+  player_slug text
+  is_active integer
+  team_id integer [ref: > teams_silver.team_id]
+  jersey_num integer
+  position_id integer [ref: > positions_silver.position_id]
+  height_inches integer
+  weight integer
+  birthdate text
+  age integer
+  country_id integer [ref: > countries_silver.country_id]
+  affiliation_id integer [ref: > affiliationtypes_silver.affiliation_id]
+  is_draft_pick integer
+  draftpick_id integer [ref: > draftpicks_silver.draftpick_id]
+  seasons_experience integer
+  career_start_season integer
+  career_last_season integer
+  is_two_way integer
+  is_ten_day integer
+  season integer
+  
+  Note: "NBA player information and attributes"
+}
+
+Table games_silver {
+  game_id integer [primary key]
+  season integer
+  game_datetime_est text
+  home_team_id integer [ref: > teams_silver.team_id]
+  away_team_id integer [ref: > teams_silver.team_id]
+  venue_id integer [ref: > venues_silver.venue_id]
+  home_points integer
+  away_points integer
+  game_type_id integer [ref: > gametypes_silver.game_type_id]
+  status_code integer [ref: > status_codes_silver.status_code]
+  
+  Note: "NBA game results and metadata"
+}
+
+Table gameteamtotals_silver {
+  game_id integer [ref: > games_silver.game_id]
+  team_id integer [ref: > teams_silver.team_id]
+  is_home integer
+  minutes_total real
+  pts integer
+  fgm integer
+  fga integer
+  fg3m integer
+  fg3a integer
+  ftm integer
+  fta integer
+  oreb integer
+  dreb integer
+  reb integer
+  ast integer
+  stl integer
+  blk integer
+  tov integer
+  pf integer
+  pitp integer
+  second_chance_pts integer
+  fastbreak_pts integer
+  pts_off_to integer
+  
+  indexes {
+    (game_id, team_id) [pk]
+  }
+  
+  Note: "Team-level statistics for each game"
+}
+
+Table playerboxscore_silver {
+  game_id integer [ref: > games_silver.game_id]
+  player_id integer [ref: > players_silver.player_id]
+  team_id integer [ref: > teams_silver.team_id]
+  starter_flag integer
+  played_flag integer
+  position_id integer [ref: > positions_silver.position_id]
+  minutes real
+  pts integer
+  fgm integer
+  fga integer
+  fg3m integer
+  fg3a integer
+  ftm integer
+  fta integer
+  oreb integer
+  dreb integer
+  reb integer
+  ast integer
+  stl integer
+  blk integer
+  tov integer
+  pf integer
+  plusminus integer
+  dnp_reason_code integer [ref: > dnp_reasons_silver.dnp_reason_code]
+  
+  indexes {
+    (game_id, player_id) [pk]
+  }
+  
+  Note: "Individual player statistics for each game"
+}
+
+Table pbp_silver {
+  game_id integer [ref: > games_silver.game_id]
+  event_num integer
+  period integer
+  pc_time text
+  wc_time text
+  event_msg_type integer
+  event_action_type integer
+  team_id integer [ref: > teams_silver.team_id]
+  player1_id integer [ref: > players_silver.player_id]
+  player2_id integer [ref: > players_silver.player_id]
+  player3_id integer [ref: > players_silver.player_id]
+  home_description text
+  visitor_description text
+  neutral_description text
+  home_score integer
+  away_score integer
+  score_margin integer
+  shot_value integer
+  shot_result text
+  shot_distance real
+  shot_x real
+  shot_y real
+  shot_side text
+  foul_type_code integer
+  turnover_type_code integer
+  is_substitution integer
+  is_timeout integer
+  
+  indexes {
+    (game_id, event_num) [pk]
+  }
+  
+  Note: "Play-by-play data for detailed game analysis"
+}
+
+// =============================================================================
+// GOLD LAYER - ANALYTICAL TABLES
+// =============================================================================
+
+Table gold_games {
+  // Enhanced games table with team context and calculations
+  game_id integer [primary key]
+  season integer
+  game_datetime_est text
+  home_team_id integer
+  away_team_id integer
+  venue_id integer
+  home_points integer
+  away_points integer
+  game_type_id integer
+  status_code integer
+  
+  // Team context (for focused team analysis)
+  team_id integer [note: "Focus team (e.g., Pacers)"]
+  is_home integer [note: "1 if focus team is home"]
+  opp_team_id integer [note: "Opponent team ID"]
+  team_points integer [note: "Focus team points"]
+  opp_points integer [note: "Opponent points"]
+  point_differential integer [note: "Team points - opponent points"]
+  
+  // Enhanced fields with joins
+  team_name_team text
+  team_abbreviation_team text
+  team_name_opp text
+  team_abbreviation_opp text
+  venue_name text
+  game_type text
+  
+  Note: "Enhanced games table with team context and win/loss calculations"
+}
+
+Table gold_game_summary {
+  // Aggregated game summaries with team totals
+  game_id integer [primary key]
+  season integer
+  game_datetime_est text
+  home_team_id integer
+  away_team_id integer
+  home_points integer
+  away_points integer
+  game_type_id integer
+  status_code integer
+  
+  // Team totals from gameteamtotals_silver
+  home_team_stats text [note: "JSON/calculated home team stats"]
+  away_team_stats text [note: "JSON/calculated away team stats"]
+  
+  Note: "Game summaries with aggregated team statistics"
+}
+
+Table gold_player_info {
+  // Enhanced player information with all joins
+  player_id integer [primary key]
+  first_name text
+  last_name text
+  full_name text [note: "Calculated: first_name + last_name"]
+  player_slug text
+  is_active integer
+  team_id integer
+  jersey_num integer
+  position_id integer
+  height_inches integer
+  weight integer
+  birthdate text
+  age integer
+  country_id integer
+  affiliation_id integer
+  is_draft_pick integer
+  draftpick_id integer
+  seasons_experience integer
+  career_start_season integer
+  career_last_season integer
+  is_two_way integer
+  is_ten_day integer
+  season integer
+  
+  // Joined fields
+  team_name_team text
+  team_city_team text
+  team_abbreviation_team text
+  position_code text
+  country_name text
+  draft_year integer
+  draft_round integer
+  draft_number integer
+  
+  Note: "Complete player profiles with team, position, and draft information"
+}
+
+Table gold_player_boxscore {
+  // Enhanced player boxscores with game context and calculations
+  game_id integer
+  player_id integer
+  team_id integer
+  starter_flag integer
+  played_flag integer
+  position_id integer
+  minutes real
+  pts integer
+  fgm integer
+  fga integer
+  fg3m integer
+  fg3a integer
+  ftm integer
+  fta integer
+  oreb integer
+  dreb integer
+  reb integer
+  ast integer
+  stl integer
+  blk integer
+  tov integer
+  pf integer
+  plusminus integer
+  dnp_reason_code integer
+  
+  // Game context
+  season integer
+  game_datetime_est text
+  home_team_id integer
+  away_team_id integer
+  is_home integer [note: "1 if player's team was home"]
+  opp_team_id integer
+  
+  // Calculated shooting percentages
+  fg_pct real [note: "Field goal percentage"]
+  fg3_pct real [note: "Three-point percentage"]
+  ft_pct real [note: "Free throw percentage"]
+  
+  // Team information
+  team_name_team text
+  team_abbreviation_team text
+  team_name_opp text
+  team_abbreviation_opp text
+  position_code text
+  
+  indexes {
+    (game_id, player_id) [pk]
+  }
+  
+  Note: "Enhanced player boxscores with game context and shooting percentages"
+}
+
+Table gold_player_averages {
+  // Season averages for players
+  player_id integer
+  season integer
+  gp integer [note: "Games played"]
+  mpg real [note: "Minutes per game"]
+  ppg real [note: "Points per game"]
+  rpg real [note: "Rebounds per game"]
+  apg real [note: "Assists per game"]
+  spg real [note: "Steals per game"]
+  bpg real [note: "Blocks per game"]
+  tpg real [note: "Turnovers per game"]
+  
+  // Season totals
+  fgm_total integer
+  fga_total integer
+  fg3m_total integer
+  fg3a_total integer
+  ftm_total integer
+  fta_total integer
+  
+  // Season percentages
+  fg_pct real
+  three_pct real
+  ft_pct real
+  
+  indexes {
+    (player_id, season) [pk]
+  }
+  
+  Note: "Season-aggregated player statistics and averages"
+}
+
+// =============================================================================
+// GOLD LAYER - ANALYTICAL TABLES
+// =============================================================================
+
+// Team-specific analytical tables
+Table gold_preseason_games {
+  game_id integer [primary key, ref: > gold_games.game_id]
+  season integer
+  game_datetime_est text
+  home_team_id integer [ref: > teams_silver.team_id]
+  away_team_id integer [ref: > teams_silver.team_id]
+  venue_id integer [ref: > venues_silver.venue_id]
+  home_points integer
+  away_points integer
+  game_type_id integer [ref: > gametypes_silver.game_type_id]
+  status_code integer [ref: > status_codes_silver.status_code]
+  team_id integer [ref: > teams_silver.team_id]
+  is_home integer
+  opp_team_id integer [ref: > teams_silver.team_id]
+  team_points integer
+  opp_points integer
+  point_differential integer
+  team_name_team text
+  team_abbreviation_team text
+  team_name_opp text
+  team_abbreviation_opp text
+  venue_name text
+  game_type text
+  
+  Note: "Preseason games only (game_type_id = 0)"
+}
+
+Table gold_regular_season_games {
+  game_id integer [primary key, ref: > gold_games.game_id]
+  season integer
+  game_datetime_est text
+  home_team_id integer [ref: > teams_silver.team_id]
+  away_team_id integer [ref: > teams_silver.team_id]
+  venue_id integer [ref: > venues_silver.venue_id]
+  home_points integer
+  away_points integer
+  game_type_id integer [ref: > gametypes_silver.game_type_id]
+  status_code integer [ref: > status_codes_silver.status_code]
+  team_id integer [ref: > teams_silver.team_id]
+  is_home integer
+  opp_team_id integer [ref: > teams_silver.team_id]
+  team_points integer
+  opp_points integer
+  point_differential integer
+  team_name_team text
+  team_abbreviation_team text
+  team_name_opp text
+  team_abbreviation_opp text
+  venue_name text
+  game_type text
+  
+  Note: "Regular season games only (game_type_id = 1)"
+}
+
+Table gold_playoff_games {
+  game_id integer [primary key, ref: > gold_games.game_id]
+  season integer
+  game_datetime_est text
+  home_team_id integer [ref: > teams_silver.team_id]
+  away_team_id integer [ref: > teams_silver.team_id]
+  venue_id integer [ref: > venues_silver.venue_id]
+  home_points integer
+  away_points integer
+  game_type_id integer [ref: > gametypes_silver.game_type_id]
+  status_code integer [ref: > status_codes_silver.status_code]
+  team_id integer [ref: > teams_silver.team_id]
+  is_home integer
+  opp_team_id integer [ref: > teams_silver.team_id]
+  team_points integer
+  opp_points integer
+  point_differential integer
+  team_name_team text
+  team_abbreviation_team text
+  team_name_opp text
+  team_abbreviation_opp text
+  venue_name text
+  game_type text
+  
+  Note: "Playoff games only (game_type_id = 3)"
+}
+
+Table gold_pacers_games {
+  game_id integer [primary key, ref: > gold_games.game_id]
+  season integer
+  game_datetime_est text
+  home_team_id integer [ref: > teams_silver.team_id]
+  away_team_id integer [ref: > teams_silver.team_id]
+  venue_id integer [ref: > venues_silver.venue_id]
+  home_points integer
+  away_points integer
+  game_type_id integer [ref: > gametypes_silver.game_type_id]
+  status_code integer [ref: > status_codes_silver.status_code]
+  team_id integer [ref: > teams_silver.team_id]
+  is_home integer
+  opp_team_id integer [ref: > teams_silver.team_id]
+  team_points integer
+  opp_points integer
+  point_differential integer
+  team_name_team text
+  team_abbreviation_team text
+  team_name_opp text
+  team_abbreviation_opp text
+  venue_name text
+  game_type text
+  
+  Note: "All Pacers games (team_abbreviation_team = 'IND')"
+}
+
+Table gold_pacers_home_games {
+  game_id integer [primary key, ref: > gold_pacers_games.game_id]
+  season integer
+  game_datetime_est text
+  home_team_id integer [ref: > teams_silver.team_id]
+  away_team_id integer [ref: > teams_silver.team_id]
+  venue_id integer [ref: > venues_silver.venue_id]
+  home_points integer
+  away_points integer
+  game_type_id integer [ref: > gametypes_silver.game_type_id]
+  status_code integer [ref: > status_codes_silver.status_code]
+  team_id integer [ref: > teams_silver.team_id]
+  is_home integer
+  opp_team_id integer [ref: > teams_silver.team_id]
+  team_points integer
+  opp_points integer
+  point_differential integer
+  team_name_team text
+  team_abbreviation_team text
+  team_name_opp text
+  team_abbreviation_opp text
+  venue_name text
+  game_type text
+  
+  Note: "Pacers home games only (is_home = 1)"
+}
+
+Table gold_pacers_away_games {
+  game_id integer [primary key, ref: > gold_pacers_games.game_id]
+  season integer
+  game_datetime_est text
+  home_team_id integer [ref: > teams_silver.team_id]
+  away_team_id integer [ref: > teams_silver.team_id]
+  venue_id integer [ref: > venues_silver.venue_id]
+  home_points integer
+  away_points integer
+  game_type_id integer [ref: > gametypes_silver.game_type_id]
+  status_code integer [ref: > status_codes_silver.status_code]
+  team_id integer [ref: > teams_silver.team_id]
+  is_home integer
+  opp_team_id integer [ref: > teams_silver.team_id]
+  team_points integer
+  opp_points integer
+  point_differential integer
+  team_name_team text
+  team_abbreviation_team text
+  team_name_opp text
+  team_abbreviation_opp text
+  venue_name text
+  game_type text
+  
+  Note: "Pacers away games only (is_home = 0)"
+}
+
+Table gold_pacers_players {
+  player_id integer [primary key, ref: > gold_player_info.player_id]
+  first_name text
+  last_name text
+  full_name text
+  player_slug text
+  is_active integer
+  team_id integer [ref: > teams_silver.team_id]
+  jersey_num integer
+  position_id integer [ref: > positions_silver.position_id]
+  height_inches integer
+  weight integer
+  birthdate text
+  age integer
+  country_id integer [ref: > countries_silver.country_id]
+  affiliation_id integer [ref: > affiliationtypes_silver.affiliation_id]
+  is_draft_pick integer
+  draftpick_id integer [ref: > draftpicks_silver.draftpick_id]
+  seasons_experience integer
+  career_start_season integer
+  career_last_season integer
+  is_two_way integer
+  is_ten_day integer
+  season integer
+  team_name_team text
+  team_city_team text
+  team_abbreviation_team text
+  position_code text
+  country_name text
+  draft_year integer
+  draft_round integer
+  draft_number integer
+  
+  Note: "Current Pacers players (team_abbreviation_team = 'IND')"
+}
+
+// =============================================================================
+// DASHBOARD USAGE NOTES
+// =============================================================================
+
+Note dashboard_queries {
+  '''
+  ## Key Dashboard Queries
+  
+  ### Game Summary Page
+  - gold_pacers_games: Main games view with win/loss calculations
+  - Filters: season, game_type, win/loss result
+  - Calculations: opponent score comparison for W/L
+  
+  ### Boxscore Browser  
+  - gold_player_boxscore: Individual game performances
+  - Joins: player names, team context, shooting percentages
+  
+  ### Player Lookup
+  - gold_player_info: Complete player profiles
+  - gold_player_averages: Season statistics
+  
+  ### Home Page
+  - Recent games from gold_pacers_games
+  - Live status updates via status_codes_silver
+  '''
+}
+
+Note data_sources {
+  '''
+  ## Data Sources
+  
+  ### Raw Data (Parquet Files)
+  - 2024_NBA_Players.parquet
+  - 2024_NBA_Schedule.parquet  
+  - Boxscores/*.parquet (traditional boxscores)
+  - PBP/*.parquet (play-by-play data)
+  
+  ### ETL Pipeline
+  1. Raw → Silver: Normalization and type conversion
+  2. Silver → Gold: Joins, calculations, analytics tables
+  3. Gold Views: Team-specific and analytical views
+  
+  ### Current Data Scope
+  - Season: 2024 (playoff games primarily)
+  - Team Focus: Indiana Pacers (IND)
+  - Game Types: Playoffs (game_type_id = 2)
+  '''
+}
