@@ -28,9 +28,24 @@ from src.etl.sqlite_sink import SQLiteSink, create_database_summary
 
 
 # Configure logging
+from datetime import datetime
+
+# Create logs directory if it doesn't exist
+project_root = Path(__file__).parent.parent
+logs_dir = project_root / "logs"
+logs_dir.mkdir(exist_ok=True)
+
+# Generate timestamped log filename
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+log_file = logs_dir / f"build_gold_{timestamp}.log"
+
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(log_file),
+        logging.StreamHandler()  # Also output to console
+    ]
 )
 logger = logging.getLogger(__name__)
 

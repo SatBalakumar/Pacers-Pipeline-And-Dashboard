@@ -512,4 +512,6 @@ def validate_gold_data(
         if not missing_games.empty:
             raise ValueError(f"gold_player_boxscore has game_ids not in games_silver: {missing_games['game_id'].unique()}")
     
-    print("✅ Gold data validation passed")
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info("✅ Gold data validation passed")

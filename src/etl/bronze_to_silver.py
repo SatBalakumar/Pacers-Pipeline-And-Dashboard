@@ -9,9 +9,12 @@ import pandas as pd
 import numpy as np
 import json
 import hashlib
+import logging
 from pathlib import Path
 from typing import Dict, List, Union, Iterator, Any
 from datetime import datetime, date
+
+logger = logging.getLogger(__name__)
 
 from .schemas import get_silver_schema
 from .utils import (
@@ -634,7 +637,7 @@ def load_boxscore_files(boxscore_dir: Union[str, Path]) -> Iterator[Dict]:
                 data = json.load(f)
                 yield data
         except Exception as e:
-            print(f"Error loading {file_path}: {e}")
+            logger.error(f"Error loading {file_path}: {e}")
 
 
 def make_gameteamtotals_silver(boxscore_iter: Iterator[Dict]) -> pd.DataFrame:

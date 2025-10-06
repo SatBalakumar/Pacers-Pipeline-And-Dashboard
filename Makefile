@@ -28,6 +28,10 @@ help:
 	@echo "  build-all    - Build complete pipeline (Silver + Gold)"
 	@echo "  validate     - Validate data integrity"
 	@echo "  clean        - Clean generated files"
+	@echo ""
+	@echo "Dashboard targets:"
+	@echo "  dashboard    - Launch Streamlit dashboard"
+	@echo "  dash-setup   - Setup dashboard dependencies"
 	@echo "  info         - Show database information"
 	@echo "  check-data   - Check if Bronze data exists"
 	@echo "  sizes        - Show file sizes"
@@ -208,4 +212,19 @@ debug:
 	@make sizes
 
 # Declare phony targets
-.PHONY: help setup clean test build-silver build-gold build-all validate info check-data pacers-games pacers-players pacers-stats sizes backup dev-build prod-build quick-build debug
+.PHONY: help setup clean test build-silver build-gold build-all validate info check-data pacers-games pacers-players pacers-stats sizes backup dev-build prod-build quick-build debug dashboard dash-setup
+
+# Dashboard targets
+dashboard:
+	@echo "🏀 Launching Pacers Analytics Dashboard..."
+	@if [ ! -f "$(DB_FILE)" ]; then \
+		echo "❌ Database not found. Running build-all first..."; \
+		$(MAKE) build-all; \
+	fi
+	@echo "🔄 Starting dashboard with conda environment activation..."
+	@cd dashboard && bash run_dashboard.sh
+
+dash-setup:
+	@echo "Setting up dashboard dependencies in conda environment..."
+	@eval "$$(conda shell.bash hook)" && conda activate pacers_de && pip install streamlit plotly
+	@echo "Dashboard setup complete!"
