@@ -1,10 +1,19 @@
 # Data files - keep structure but ignore content
 data/raw/*
 !data/raw/.gitkeep
+!data/raw/Boxscores/.gitkeep
+!data/raw/PBP/.gitkeep
 data/silver/*
 !data/silver/.gitkeep
 data/gold/*
 !data/gold/.gitkeep
+data/interim/*
+!data/interim/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+
+# All parquet files anywhere in the project
+*.parquet
 
 # Database files
 db/*
