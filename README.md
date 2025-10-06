@@ -268,6 +268,8 @@ data/raw/
     └── *.parquet files (optional)
 ```
 
+**⚠️ Data Not Included**: Raw data files are not included in this repository due to size and licensing considerations. You'll need to obtain NBA data separately and place it in the appropriate folders before running the pipeline.
+
 Built for the Indiana Pacers analytics team with a focus on player development and game analysis.
 
 ### Run ETL Pipeline
