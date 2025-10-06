@@ -1,0 +1,2 @@
+# This file ensures the silver directory is tracked by git
+# Temporary processing files are stored here during ETL
